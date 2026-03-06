@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Warehouse Dashboard</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --blue: #4f8cc9;
+        --green: #97bf7f;
+        --grid: #e9eef5;
+        --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        --radius: 22px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 56px;
+        line-height: 1.05;
+        margin: 10px 0 28px;
+        letter-spacing: -0.03em;
+        color: #203b63;
+      }
+
+      .top-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 24px 26px;
+      }
+
+      .card h2 {
+        margin: 0 0 18px;
+        font-size: 24px;
+        letter-spacing: -0.02em;
+        color: #233b63;
+      }
+
+      .bar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: 180px 1fr 90px;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .bar-label {
+        min-width: 0;
+      }
+
+      .bar-title {
+        font-weight: 700;
+        font-size: 18px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bar-subtitle {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bar-track {
+        width: 100%;
+        height: 32px;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #f7f9fc 0%, #eef3f9 100%);
+        overflow: hidden;
+        border: 1px solid #edf2f8;
+      }
+
+      .bar-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+      }
+
+      .revenue .bar-fill {
+        background: linear-gradient(90deg, #5b99d2, #8ab8de);
+      }
+      .units .bar-fill {
+        background: linear-gradient(90deg, #96bb85, #b6d3a8);
+      }
+
+      .bar-value {
+        text-align: right;
+        font-weight: 700;
+        font-size: 16px;
+        color: #42526b;
+      }
+
+      .chart-card {
+        padding-bottom: 18px;
+      }
+
+      .chart-wrap {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .axis-label {
+        fill: var(--muted);
+        font-size: 12px;
+      }
+
+      .axis-title {
+        fill: #42526b;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .line-path {
+        fill: none;
+        stroke: var(--blue);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .area-path {
+        fill: rgba(79, 140, 201, 0.18);
+        stroke: none;
+      }
+
+      .point {
+        fill: #fff;
+        stroke: var(--blue);
+        stroke-width: 3;
+      }
+
+      .grid-line {
+        stroke: var(--grid);
+        stroke-width: 1;
+        stroke-dasharray: 4 6;
+      }
+
+      .footer-note {
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 960px) {
+        h1 {
+          font-size: 40px;
+        }
+        .top-grid {
+          grid-template-columns: 1fr;
+        }
+        .bar-row {
+          grid-template-columns: 1fr;
+        }
+        .bar-value {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>Warehouse Dashboard</h1>
+
+      <div class="top-grid">
+        <section class="card revenue">
+          <h2>Top Products by Revenue</h2>
+          <div id="revenue-bars" class="bar-list"></div>
+        </section>
+
+        <section class="card units">
+          <h2>Top Products by Units Sold</h2>
+          <div id="units-bars" class="bar-list"></div>
+        </section>
+      </div>
+
+      <section class="card chart-card">
+        <h2>Sales by Hour of Day</h2>
+        <div class="chart-wrap">
+          <svg
+            id="sales-chart"
+            viewBox="0 0 1100 320"
+            role="img"
+            aria-label="Sales by hour chart"
+          ></svg>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const DASHBOARD_DATA = {
+        topRevenue: [
+          {
+            product_name: "USB-C Hub 7-in-1",
+            category: "Electronics",
+            revenue_usd: 1693.6,
+          },
+          {
+            product_name: "Leather Ankle Boots",
+            category: "Clothing",
+            revenue_usd: 1521.9144,
+          },
+          {
+            product_name: "Tablet Stand Adjustable",
+            category: "Electronics",
+            revenue_usd: 1508.3744,
+          },
+          {
+            product_name: "Microfiber Cleaning Cloths",
+            category: "Home & Garden",
+            revenue_usd: 1422.9872,
+          },
+          {
+            product_name: "Cooking Around the World",
+            category: "Books",
+            revenue_usd: 1408.874,
+          },
+        ],
+        topUnits: [
+          {
+            product_name: "Dog Training Treats",
+            category: "Pet Supplies",
+            units_sold: 40.0,
+          },
+          {
+            product_name: "Emergency Car Kit",
+            category: "Automotive",
+            units_sold: 28.0,
+          },
+          {
+            product_name: "Dog Leash Retractable",
+            category: "Pet Supplies",
+            units_sold: 27.0,
+          },
+          {
+            product_name: "Cat Litter Mat",
+            category: "Pet Supplies",
+            units_sold: 27.0,
+          },
+          {
+            product_name: "Pet Carrier Soft",
+            category: "Pet Supplies",
+            units_sold: 26.0,
+          },
+        ],
+        salesByHour: [
+          { hour_of_day: 9, revenue_usd: 7430.7912 },
+          { hour_of_day: 10, revenue_usd: 9192.8004 },
+          { hour_of_day: 11, revenue_usd: 11319.1948 },
+          { hour_of_day: 12, revenue_usd: 10248.7376 },
+          { hour_of_day: 13, revenue_usd: 9764.3912 },
+          { hour_of_day: 14, revenue_usd: 11319.0076 },
+          { hour_of_day: 15, revenue_usd: 11915.5996 },
+          { hour_of_day: 16, revenue_usd: 10291.3696 },
+          { hour_of_day: 17, revenue_usd: 712.44 },
+          { hour_of_day: 18, revenue_usd: 1693.358 },
+        ],
+      };
+
+      function formatCurrency(value) {
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 0,
+        }).format(value);
+      }
+
+      function formatNumber(value) {
+        return new Intl.NumberFormat("en-US").format(value);
+      }
+
+      function renderBarList(containerId, items, valueKey, formatter) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = "";
+        const maxValue = Math.max(
+          ...items.map((item) => Number(item[valueKey]) || 0),
+          1,
+        );
+
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "bar-row";
+
+          const label = document.createElement("div");
+          label.className = "bar-label";
+          label.innerHTML = `
+          <div class="bar-title">${item.product_name}</div>
+          <div class="bar-subtitle">${item.category || ""}</div>
+        `;
+
+          const track = document.createElement("div");
+          track.className = "bar-track";
+
+          const fill = document.createElement("div");
+          fill.className = "bar-fill";
+          fill.style.width = `${(Number(item[valueKey]) / maxValue) * 100}%`;
+          track.appendChild(fill);
+
+          const value = document.createElement("div");
+          value.className = "bar-value";
+          value.textContent = formatter(item[valueKey]);
+
+          row.appendChild(label);
+          row.appendChild(track);
+          row.appendChild(value);
+          container.appendChild(row);
+        });
+      }
+
+      function renderSalesChart(containerId, data) {
+        const svg = document.getElementById(containerId);
+        const width = 1100;
+        const height = 320;
+        const margin = { top: 16, right: 28, bottom: 48, left: 70 };
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        const maxY = Math.max(
+          ...data.map((d) => Number(d.revenue_usd) || 0),
+          1,
+        );
+        const minY = 0;
+        const ticksY = 5;
+
+        const x = (hour) => margin.left + (hour / 23) * innerWidth;
+        const y = (value) =>
+          margin.top +
+          innerHeight -
+          ((value - minY) / (maxY - minY || 1)) * innerHeight;
+
+        const linePath = data
+          .map(
+            (d, i) =>
+              `${i === 0 ? "M" : "L"} ${x(d.hour_of_day)} ${y(d.revenue_usd)}`,
+          )
+          .join(" ");
+
+        const areaPath = [
+          `M ${x(data[0].hour_of_day)} ${margin.top + innerHeight}`,
+          ...data.map((d) => `L ${x(d.hour_of_day)} ${y(d.revenue_usd)}`),
+          `L ${x(data[data.length - 1].hour_of_day)} ${margin.top + innerHeight}`,
+          "Z",
+        ].join(" ");
+
+        const yTicks = Array.from({ length: ticksY }, (_, i) => {
+          return Math.round((maxY / (ticksY - 1)) * i);
+        }).reverse();
+
+        svg.innerHTML = `
+        <rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>
+        ${yTicks
+          .map(
+            (tick) => `
+          <g>
+            <line class="grid-line" x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick)}" y2="${y(tick)}"></line>
+            <text class="axis-label" x="${margin.left - 12}" y="${y(tick) + 4}" text-anchor="end">${formatCurrency(tick)}</text>
+          </g>
+        `,
+          )
+          .join("")}
+
+        <line x1="${margin.left}" x2="${margin.left}" y1="${margin.top}" y2="${margin.top + innerHeight}" stroke="#7c8797" stroke-width="1.5"></line>
+        <line x1="${margin.left}" x2="${width - margin.right}" y1="${margin.top + innerHeight}" y2="${margin.top + innerHeight}" stroke="#7c8797" stroke-width="1.5"></line>
+
+        ${data
+          .map(
+            (d) => `
+          <text class="axis-label" x="${x(d.hour_of_day)}" y="${height - 18}" text-anchor="middle">${d.hour_of_day}</text>
+        `,
+          )
+          .join("")}
+
+        <text class="axis-title" x="${width / 2}" y="${height - 2}" text-anchor="middle">Hour of Day</text>
+        <text class="axis-title" transform="translate(22 ${height / 2}) rotate(-90)" text-anchor="middle">Sales Revenue (USD)</text>
+
+        <path class="area-path" d="${areaPath}"></path>
+        <path class="line-path" d="${linePath}"></path>
+
+        ${data
+          .map(
+            (d) => `
+          <circle class="point" cx="${x(d.hour_of_day)}" cy="${y(d.revenue_usd)}" r="5.5"></circle>
+        `,
+          )
+          .join("")}
+      `;
+      }
+
+      function renderDashboard(data) {
+        renderBarList(
+          "revenue-bars",
+          data.topRevenue,
+          "revenue_usd",
+          formatCurrency,
+        );
+        renderBarList("units-bars", data.topUnits, "units_sold", formatNumber);
+        renderSalesChart("sales-chart", data.salesByHour);
+      }
+
+      window.renderDashboard = renderDashboard;
+      renderDashboard(DASHBOARD_DATA);
+    </script>
+  </body>
+</html>
