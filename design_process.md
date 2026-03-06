@@ -109,23 +109,22 @@ This keeps the DAG definitions simple and separates orchestration from logic.
 
 ---
 
-## Two Airflow Implementations
+## Airflow Implementation
 
-Two DAG implementations were created:
+Two orchestration approaches were considered during development:
 
-1. **Python-only DAG**
-2. **DAG using PostgresOperator**
+1. a Python-only DAG
+2. a DAG combining PythonOperator and PostgresOperator
 
-Both DAGs reuse the same ETL functions.
+After testing both approaches in the provided local environment, the final implementation uses the Python-only DAG.
 
-The difference is only the orchestration style:
+This option was selected because it kept the solution simpler and more reliable for the challenge scope, while still covering all required steps:
 
-| Approach         | Usage                                                 |
-| ---------------- | ----------------------------------------------------- |
-| PythonOperator   | Executes schema creation and SQL files through Python |
-| PostgresOperator | Uses native Airflow operators for SQL execution       |
-
-This demonstrates two common Airflow patterns while keeping the business logic shared.
+- schema creation
+- warehouse refresh
+- dimension loading
+- fact loading
+- reporting view generation
 
 ---
 
@@ -412,3 +411,33 @@ Provides insights about:
 
 This pipeline performs a full refresh load and produces analytics-ready
 views in the warehouse.
+
+---
+
+# Dashboard Mockup
+
+The challenge also required presenting the analytical outputs in a
+dashboard format.
+
+Instead of using external design tools such as:
+
+- Figma
+- Miro
+- PowerPoint
+
+a simple **HTML + CSS mock dashboard** was implemented.
+
+The goal was to quickly visualize the warehouse outputs without adding
+extra tooling or design overhead.
+
+The page renders the main KPIs derived from the analytical views:
+
+- **Top Products by Revenue**
+- **Top Products by Units Sold**
+- **Sales by Hour**
+
+The dashboard can consume the data exported from the warehouse views and
+display them using simple charts.
+
+This approach keeps the solution lightweight while still providing a
+clear visual representation of the analytical results.
